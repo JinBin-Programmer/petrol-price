@@ -4,6 +4,7 @@ import Script from "next/script";
 import Link from "next/link";
 import { LanguageProvider } from "@/contexts/LanguageContext";
 import LanguageToggle from "@/components/LanguageToggle";
+import Breadcrumb from "@/components/Breadcrumb";
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://petrol.merquri.com"),
@@ -23,6 +24,9 @@ export const metadata: Metadata = {
     "harga RON95 minggu ini",
     "petrol price today",
   ],
+  icons: {
+    icon: "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⛽</text></svg>",
+  },
   openGraph: {
     type: "website",
     locale: "ms_MY",
@@ -62,6 +66,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               </div>
             </div>
           </nav>
+
+          {/* Breadcrumb */}
+          <div className="bg-black/40 border-b border-white/5">
+            <Breadcrumb />
+          </div>
 
           {/* Main content */}
           <main className="flex-1">
