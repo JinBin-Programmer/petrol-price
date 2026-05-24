@@ -4,7 +4,6 @@ import Script from "next/script";
 import Link from "next/link";
 import { LanguageProvider } from "@/contexts/LanguageContext";
 import LanguageToggle from "@/components/LanguageToggle";
-import Breadcrumb from "@/components/Breadcrumb";
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://petrol.merquri.com"),
@@ -66,11 +65,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               </div>
             </div>
           </nav>
-
-          {/* Breadcrumb */}
-          <div className="bg-black/40 border-b border-white/5">
-            <Breadcrumb />
-          </div>
 
           {/* Main content */}
           <main className="flex-1">
