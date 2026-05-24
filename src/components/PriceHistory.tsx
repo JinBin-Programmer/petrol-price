@@ -27,15 +27,16 @@ function trendArrow(current: number, prev: number) {
 export default function PriceHistory({ currentFuels }: Props) {
   const { lang } = useLanguage();
 
-  const ron95 = currentFuels.find(f => f.code === "RON95");
-  const ron97 = currentFuels.find(f => f.code === "RON97");
+  const ron97  = currentFuels.find(f => f.code === "RON97");
   const diesel = currentFuels.find(f => f.code === "DIESEL");
+
+  const prevRon97  = history[0].ron97;
+  const prevDiesel = history[0].diesel;
 
   const rows = [
     {
       date: lang === "bm" ? "Minggu ini" : "This week",
-      ron95: ron95?.price ?? 2.05,
-      ron97: ron97?.price ?? 3.38,
+      ron97:  ron97?.price  ?? 3.38,
       diesel: diesel?.price ?? 3.35,
       isCurrent: true,
     },
@@ -43,36 +44,30 @@ export default function PriceHistory({ currentFuels }: Props) {
       date: new Date(h.date).toLocaleDateString(lang === "bm" ? "ms-MY" : "en-MY", {
         day: "numeric", month: "short", year: "numeric",
       }),
-      ron95: h.ron95,
-      ron97: h.ron97,
+      ron97:  h.ron97,
       diesel: h.diesel,
       isCurrent: false,
     })),
   ];
 
-  const prevRon95  = history[0].ron95;
-  const prevRon97  = history[0].ron97;
-  const prevDiesel = history[0].diesel;
-
   return (
     <div className="card-glass rounded-2xl overflow-hidden">
       <div className="px-5 py-4 border-b border-white/10">
         <h2 className="font-bold text-white text-base">
-          📊 {lang === "bm" ? "Sejarah Harga / Trend Mingguan" : "Price History / Weekly Trend"}
+          📊 {lang === "bm" ? "Sejarah Harga Pasaran / Trend Mingguan" : "Market Price History / Weekly Trend"}
         </h2>
         <p className="text-xs text-white/40 mt-0.5">
           {lang === "bm"
-            ? "Harga anggaran — dikemas kini setiap Khamis. Sahkan di KPDNHEP."
-            : "Approximate reference data — updated every Thursday. Verify at KPDNHEP."}
+            ? "RON97 & Diesel Euro 5 — harga pasaran yang berubah setiap minggu. RON95 & B10 tidak disenaraikan kerana harga siling ditetapkan kerajaan."
+            : "RON97 & Euro 5 Diesel — market prices that change weekly. RON95 & B10 excluded as they are government-fixed ceiling prices."}
         </p>
       </div>
 
       {/* Trend summary */}
       <div className="px-5 py-3 flex gap-4 border-b border-white/5 text-xs">
         {[
-          { label: "RON95", cur: ron95?.price ?? 2.05, prev: prevRon95, color: "text-yellow-300" },
-          { label: "RON97", cur: ron97?.price ?? 3.38, prev: prevRon97, color: "text-green-300" },
-          { label: "Diesel", cur: diesel?.price ?? 3.35, prev: prevDiesel, color: "text-blue-300" },
+          { label: "RON97",       cur: ron97?.price  ?? 3.38, prev: prevRon97,  color: "text-green-300" },
+          { label: "Diesel Euro 5", cur: diesel?.price ?? 3.35, prev: prevDiesel, color: "text-blue-300"  },
         ].map(f => {
           const diff = parseFloat((f.cur - f.prev).toFixed(2));
           return (
@@ -82,7 +77,8 @@ export default function PriceHistory({ currentFuels }: Props) {
                 {trendArrow(f.cur, f.prev)}
               </div>
               <div className={`font-semibold ${trendClass(f.cur, f.prev)}`}>
-                {diff === 0 ? lang === "bm" ? "Tiada perubahan" : "No change"
+                {diff === 0
+                  ? (lang === "bm" ? "Tiada perubahan" : "No change")
                   : `${diff > 0 ? "+" : ""}RM ${Math.abs(diff).toFixed(2)}`}
               </div>
               <div className="text-white/30">{lang === "bm" ? "vs minggu lalu" : "vs last week"}</div>
@@ -97,9 +93,8 @@ export default function PriceHistory({ currentFuels }: Props) {
           <thead>
             <tr className="text-xs text-white/30 uppercase tracking-wide border-b border-white/10">
               <th className="text-left px-4 py-2">{lang === "bm" ? "Tarikh" : "Date"}</th>
-              <th className="text-right px-4 py-2">RON95</th>
               <th className="text-right px-4 py-2">RON97</th>
-              <th className="text-right px-4 py-2">Diesel</th>
+              <th className="text-right px-4 py-2">Diesel Euro 5</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-white/5">
@@ -117,9 +112,6 @@ export default function PriceHistory({ currentFuels }: Props) {
                       {lang === "bm" ? "Terkini" : "Latest"}
                     </span>
                   )}
-                </td>
-                <td className="px-4 py-2.5 text-right text-yellow-300 font-mono">
-                  RM {fmt(row.ron95)}
                 </td>
                 <td className="px-4 py-2.5 text-right text-green-300 font-mono">
                   RM {fmt(row.ron97)}

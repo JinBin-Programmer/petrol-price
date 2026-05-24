@@ -204,8 +204,12 @@ export default function PetrolContent({ data }: Props) {
                   </div>
                   <div className="text-xs text-white/40 mt-0.5">{tx.perLitre} · {fuelNote}</div>
 
-                  {/* Trend vs last week */}
-                  {trend && (
+                  {/* Trend vs last week — subsidised fuels have fixed ceiling prices */}
+                  {fuel.is_subsidised ? (
+                    <div className="mt-2 text-xs text-white/30">
+                      🔒 {lang === "bm" ? "Harga siling ditetapkan kerajaan" : "Government fixed ceiling price"}
+                    </div>
+                  ) : trend && (
                     <div className={`mt-2 text-xs font-semibold ${
                       trend.diff > 0 ? "text-red-300" : trend.diff < 0 ? "text-green-300" : "text-white/40"
                     }`}>
