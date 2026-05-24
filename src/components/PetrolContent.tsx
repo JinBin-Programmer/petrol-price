@@ -2,9 +2,11 @@
 
 import Link from "next/link";
 import TankCalculator from "@/components/TankCalculator";
+import PriceHistory from "@/components/PriceHistory";
 import AdBanner from "@/components/AdBanner";
 import { useLanguage } from "@/contexts/LanguageContext";
 import type { PetrolData } from "@/lib/petrol";
+import history from "@/data/price-history.json";
 
 interface Props {
   data: PetrolData;
@@ -19,6 +21,21 @@ const FUEL_STYLES: Record<string, {
   DIESEL_B10: { bg: "from-gray-700 to-gray-950",      border: "border-gray-500/40",   badge: "bg-gray-600",   saveBadge: "bg-green-700",  icon: "⚫" },
 };
 
+const HISTORY_MAP: Record<string, keyof typeof history[0]> = {
+  RON95: "ron95",
+  RON97: "ron97",
+  DIESEL: "diesel",
+  DIESEL_B10: "diesel_b10",
+};
+
+function getTrend(currentPrice: number, fuelCode: string) {
+  const key = HISTORY_MAP[fuelCode];
+  if (!key) return null;
+  const prev = history[0][key] as number;
+  const diff = parseFloat((currentPrice - prev).toFixed(2));
+  return { diff, prev };
+}
+
 const t = {
   bm: {
     live: "Langsung dari KPDNHEP",
@@ -32,6 +49,11 @@ const t = {
     perLitre: "se-liter",
     save: "Jimat",
     perL: "/L",
+    vsLastWeek: "vs minggu lalu",
+    unchanged: "Tiada perubahan",
+    shareText: (prices: string) =>
+      `Harga Petrol Malaysia minggu ini:\n${prices}\n\nSemak harga terkini: https://petrol.themalaysianinfo.online`,
+    shareBtn: "📤 Kongsi ke WhatsApp",
     infoCards: [
       {
         icon: "📅",
@@ -69,6 +91,11 @@ const t = {
     perLitre: "per litre",
     save: "Save",
     perL: "/L",
+    vsLastWeek: "vs last week",
+    unchanged: "No change",
+    shareText: (prices: string) =>
+      `Malaysia Petrol Prices this week:\n${prices}\n\nCheck latest prices: https://petrol.themalaysianinfo.online`,
+    shareBtn: "📤 Share on WhatsApp",
     infoCards: [
       {
         icon: "📅",
@@ -99,6 +126,14 @@ const t = {
 export default function PetrolContent({ data }: Props) {
   const { lang } = useLanguage();
   const tx = t[lang];
+
+  const buildShareUrl = () => {
+    const prices = data.fuels.map(f =>
+      `${FUEL_STYLES[f.code]?.icon ?? "⛽"} ${lang === "bm" ? f.name_ms : f.name}: RM${f.price.toFixed(2)}/L`
+    ).join("\n");
+    const msg = tx.shareText(prices);
+    return `https://wa.me/?text=${encodeURIComponent(msg)}`;
+  };
 
   return (
     <div className="min-h-screen">
@@ -135,6 +170,7 @@ export default function PetrolContent({ data }: Props) {
               const saving = fuel.market_price ? parseFloat((fuel.market_price - fuel.price).toFixed(2)) : null;
               const fuelName = lang === "bm" ? fuel.name_ms : fuel.name;
               const fuelNote = lang === "bm" ? fuel.note_ms : fuel.note;
+              const trend = getTrend(fuel.price, fuel.code);
 
               return (
                 <div
@@ -168,14 +204,37 @@ export default function PetrolContent({ data }: Props) {
                   </div>
                   <div className="text-xs text-white/40 mt-0.5">{tx.perLitre} · {fuelNote}</div>
 
+                  {/* Trend vs last week */}
+                  {trend && (
+                    <div className={`mt-2 text-xs font-semibold ${
+                      trend.diff > 0 ? "text-red-300" : trend.diff < 0 ? "text-green-300" : "text-white/40"
+                    }`}>
+                      {trend.diff === 0
+                        ? `— ${tx.unchanged}`
+                        : `${trend.diff > 0 ? "▲" : "▼"} RM ${Math.abs(trend.diff).toFixed(2)} ${tx.vsLastWeek}`}
+                    </div>
+                  )}
+
                   {saving && saving > 0 && (
-                    <div className={`mt-3 inline-flex items-center gap-1 text-xs text-white font-semibold px-2.5 py-1 rounded-full ${style.saveBadge}`}>
+                    <div className={`mt-2 inline-flex items-center gap-1 text-xs text-white font-semibold px-2.5 py-1 rounded-full ${style.saveBadge}`}>
                       💰 {tx.save} RM {saving.toFixed(2)}{tx.perL}
                     </div>
                   )}
                 </div>
               );
             })}
+          </div>
+
+          {/* WhatsApp share button */}
+          <div className="text-center animate-in delay-3">
+            <a
+              href={buildShareUrl()}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 bg-green-600 hover:bg-green-500 text-white font-semibold text-sm px-5 py-2.5 rounded-full transition-colors shadow-lg"
+            >
+              {tx.shareBtn}
+            </a>
           </div>
         </div>
       </div>
@@ -187,6 +246,10 @@ export default function PetrolContent({ data }: Props) {
 
         <div className="animate-in delay-2">
           <TankCalculator fuels={data.fuels} />
+        </div>
+
+        <div className="animate-in delay-2">
+          <PriceHistory currentFuels={data.fuels} />
         </div>
 
         <AdBanner slot="7777777777" format="rectangle" className="min-h-[250px] rounded-xl overflow-hidden" />

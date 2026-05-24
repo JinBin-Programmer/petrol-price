@@ -17,16 +17,16 @@ const TANK_PRESETS = [
 ];
 
 const EFFICIENCY_PRESETS = [
-  { labelBm: "Axia / Bezza",  labelEn: "Axia / Bezza",  sublabel: "~20 km/L", value: 20 },
-  { labelBm: "Vios / City",   labelEn: "Vios / City",   sublabel: "~14 km/L", value: 14 },
-  { labelBm: "CR-V / Civic",  labelEn: "CR-V / Civic",  sublabel: "~12 km/L", value: 12 },
-  { labelBm: "Hilux / 4WD",   labelEn: "Hilux / 4WD",   sublabel: "~9 km/L",  value: 9  },
+  { labelBm: "Axia / Bezza", labelEn: "Axia / Bezza", sublabel: "~20 km/L", value: 20 },
+  { labelBm: "Vios / City",  labelEn: "Vios / City",  sublabel: "~14 km/L", value: 14 },
+  { labelBm: "CR-V / Civic", labelEn: "CR-V / Civic", sublabel: "~12 km/L", value: 12 },
+  { labelBm: "Hilux / 4WD",  labelEn: "Hilux / 4WD",  sublabel: "~9 km/L",  value: 9  },
 ];
 
 const tx = {
   bm: {
-    title: "🚗 Kalkulator Jarak",
-    subtitle: "Berapa km boleh pergi dengan tangki penuh?",
+    title: "🚗 Kalkulator Jarak & Kos",
+    subtitle: "Berapa km boleh pergi? Berapa kos sebulan?",
     tankLabel: "Saiz Tangki",
     tankOther: "Lain (L)",
     litres: "liter",
@@ -45,10 +45,19 @@ const tx = {
     colFull: "Tangki penuh",
     colKm: "RM/km",
     disclaimer: "* Anggaran sahaja. Bergantung pada cara memandu, keadaan trafik & jenis kenderaan.",
+    monthlyTitle: "📅 Kos Bulanan",
+    monthlySubtitle: "Berapa habis sebulan untuk minyak?",
+    weeklyKm: "Jarak pemanduan seminggu",
+    weeklyKmPlaceholder: "cth: 300",
+    kmPerWeek: "km/minggu",
+    monthlyFuel: "Minyak sebulan",
+    monthlyCost: "Kos minyak sebulan",
+    yearlyCost: "Kos minyak setahun",
+    litresPerMonth: "L/bulan",
   },
   en: {
-    title: "🚗 Distance Calculator",
-    subtitle: "How far can you go with a full tank?",
+    title: "🚗 Distance & Cost Calculator",
+    subtitle: "How far can you go? What's your monthly fuel bill?",
     tankLabel: "Tank Size",
     tankOther: "Other (L)",
     litres: "litres",
@@ -67,6 +76,15 @@ const tx = {
     colFull: "Full tank",
     colKm: "RM/km",
     disclaimer: "* Estimates only. Depends on driving style, traffic conditions & vehicle type.",
+    monthlyTitle: "📅 Monthly Cost",
+    monthlySubtitle: "How much do you spend on petrol per month?",
+    weeklyKm: "Weekly driving distance",
+    weeklyKmPlaceholder: "e.g. 300",
+    kmPerWeek: "km/week",
+    monthlyFuel: "Fuel per month",
+    monthlyCost: "Monthly fuel cost",
+    yearlyCost: "Yearly fuel cost",
+    litresPerMonth: "L/month",
   },
 };
 
@@ -78,6 +96,7 @@ export default function TankCalculator({ fuels }: Props) {
   const [customTank, setCustomTank] = useState("");
   const [efficiency, setEfficiency] = useState(14);
   const [customEff, setCustomEff] = useState("");
+  const [weeklyKm, setWeeklyKm] = useState("");
 
   const effectiveTank = parseFloat(customTank) || tankSize;
   const effectiveEff  = parseFloat(customEff)  || efficiency;
@@ -89,6 +108,12 @@ export default function TankCalculator({ fuels }: Props) {
   const savingPerTank  = ron95?.market_price
     ? (ron95.market_price - ron95.price) * effectiveTank
     : 0;
+
+  // Monthly cost calculation (4.33 weeks per month average)
+  const weeklyKmNum = parseFloat(weeklyKm);
+  const litresPerMonth = weeklyKmNum > 0 ? (weeklyKmNum / effectiveEff) * 4.33 : null;
+  const monthlyCost    = litresPerMonth && ron95 ? litresPerMonth * ron95.price : null;
+  const yearlyCost     = monthlyCost ? monthlyCost * 12 : null;
 
   return (
     <div className="card-glass rounded-2xl overflow-hidden">
@@ -166,7 +191,7 @@ export default function TankCalculator({ fuels }: Props) {
           </div>
         </div>
 
-        {/* Results panel */}
+        {/* Full tank results */}
         <div className="bg-gradient-to-br from-yellow-500/20 to-yellow-700/10 border border-yellow-400/20 rounded-2xl p-5 space-y-4">
           <div className="text-xs text-yellow-300/70 uppercase tracking-wider font-semibold">
             {s.summaryPrefix} RM {ron95?.price.toFixed(2)}/L — {effectiveTank}L {s.tankSuffix}, {effectiveEff} km/L
@@ -192,6 +217,54 @@ export default function TankCalculator({ fuels }: Props) {
               💰 {s.saveBm} <strong>RM {savingPerTank.toFixed(2)}</strong> {s.saveEn}
             </div>
           )}
+        </div>
+
+        {/* Monthly cost calculator */}
+        <div className="border border-white/10 rounded-2xl overflow-hidden">
+          <div className="px-4 py-3 bg-white/5 border-b border-white/10">
+            <div className="font-semibold text-white text-sm">{s.monthlyTitle}</div>
+            <div className="text-xs text-white/40 mt-0.5">{s.monthlySubtitle}</div>
+          </div>
+          <div className="p-4 space-y-4">
+            <div>
+              <label className="block text-xs text-white/50 uppercase tracking-wider mb-2">
+                {s.weeklyKm}
+              </label>
+              <div className="flex items-center gap-2">
+                <input
+                  type="number"
+                  placeholder={s.weeklyKmPlaceholder}
+                  value={weeklyKm}
+                  onChange={(e) => setWeeklyKm(e.target.value)}
+                  className="w-40 bg-white/10 border border-white/20 text-white rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-yellow-400 placeholder:text-white/30"
+                />
+                <span className="text-sm text-white/40">{s.kmPerWeek}</span>
+              </div>
+            </div>
+
+            {monthlyCost !== null && (
+              <div className="grid grid-cols-3 gap-3 text-center bg-white/5 rounded-xl p-4">
+                <div>
+                  <div className="text-xl font-black text-white">
+                    {litresPerMonth!.toFixed(0)}
+                  </div>
+                  <div className="text-xs text-white/40 mt-0.5">{s.litresPerMonth}</div>
+                </div>
+                <div>
+                  <div className="text-xl font-black text-yellow-300">
+                    RM {monthlyCost.toFixed(0)}
+                  </div>
+                  <div className="text-xs text-white/40 mt-0.5">{s.monthlyCost}</div>
+                </div>
+                <div>
+                  <div className="text-xl font-black text-white/70">
+                    RM {yearlyCost!.toFixed(0)}
+                  </div>
+                  <div className="text-xs text-white/40 mt-0.5">{s.yearlyCost}</div>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
 
         {/* All fuels comparison */}
