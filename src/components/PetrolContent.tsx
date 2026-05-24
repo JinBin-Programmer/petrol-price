@@ -242,14 +242,14 @@ export default function PetrolContent({ data }: Props) {
       {/* Content below hero */}
       <div className="max-w-2xl mx-auto px-4 pb-10 space-y-6 bg-[#0a0a0a]">
 
+        <div className="animate-in delay-2">
+          <PriceHistory currentFuels={data.fuels} />
+        </div>
+
         <AdBanner slot="6666666666" format="horizontal" className="min-h-[90px] rounded-xl overflow-hidden" />
 
         <div className="animate-in delay-2">
           <TankCalculator fuels={data.fuels} />
-        </div>
-
-        <div className="animate-in delay-2">
-          <PriceHistory currentFuels={data.fuels} />
         </div>
 
         <AdBanner slot="7777777777" format="rectangle" className="min-h-[250px] rounded-xl overflow-hidden" />
