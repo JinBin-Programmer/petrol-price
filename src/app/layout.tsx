@@ -41,16 +41,18 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       </head>
       <body className="min-h-screen flex flex-col">
         {/* Navbar */}
-        <nav className="sticky top-0 z-50 bg-black/50 backdrop-blur border-b border-orange-900/40 shadow-sm">
+        <nav className="sticky top-0 z-50 bg-black/70 backdrop-blur border-b border-white/10 shadow-sm">
           <div className="max-w-2xl mx-auto px-4 py-3 flex items-center justify-between">
             <Link href="/" className="flex items-center gap-2 font-bold text-white text-lg">
               <span className="text-2xl">⛽</span>
-              <span>Harga Petrol MY</span>
+              <div>
+                <div className="leading-none">Harga Petrol MY</div>
+                <div className="text-[10px] text-white/40 font-normal leading-none">Malaysia Petrol Price</div>
+              </div>
             </Link>
-            <div className="flex items-center gap-4 text-sm font-medium text-orange-200">
-              <Link href="/" className="hover:text-white transition-colors">Harga</Link>
-              <Link href="/about" className="hover:text-white transition-colors">About</Link>
-              <Link href="/privacy-policy" className="hover:text-white transition-colors">Privacy</Link>
+            <div className="flex items-center gap-4 text-sm font-medium text-white/60">
+              <Link href="/" className="hover:text-white transition-colors">Harga / Price</Link>
+              <Link href="/about" className="hover:text-white transition-colors">Tentang / About</Link>
             </div>
           </div>
         </nav>
@@ -61,22 +63,22 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         </main>
 
         {/* Footer */}
-        <footer className="border-t border-orange-900/30 bg-black/40 mt-10 py-6 text-center text-xs text-orange-200/50 space-y-1">
+        <footer className="border-t border-white/10 bg-black/60 py-6 text-center text-xs text-white/30 space-y-1">
           <p>
-            Harga petrol dari{" "}
-            <a href="https://www.kpdnhep.gov.my" target="_blank" rel="noopener noreferrer" className="underline hover:text-orange-300">
+            Harga petrol dari / Petrol prices from{" "}
+            <a href="https://www.kpdnhep.gov.my" target="_blank" rel="noopener noreferrer" className="underline hover:text-white/60">
               KPDNHEP
             </a>{" "}
-            · Dikemas kini setiap minggu (Khamis)
+            · Dikemas kini setiap Khamis / Updated every Thursday
           </p>
           <div className="flex flex-wrap justify-center gap-3 mt-2">
-            <Link href="/about" className="hover:text-white">About</Link>
+            <Link href="/about" className="hover:text-white">Tentang / About</Link>
             <span>·</span>
-            <Link href="/privacy-policy" className="hover:text-white">Privacy Policy</Link>
+            <Link href="/privacy-policy" className="hover:text-white">Dasar Privasi / Privacy</Link>
             <span>·</span>
-            <Link href="/terms" className="hover:text-white">Terms of Service</Link>
+            <Link href="/terms" className="hover:text-white">Terma / Terms</Link>
           </div>
-          <p className="mt-2">© {new Date().getFullYear()} Harga Petrol Malaysia · For reference only</p>
+          <p className="mt-2">© {new Date().getFullYear()} Harga Petrol Malaysia · Untuk rujukan sahaja / For reference only</p>
         </footer>
       </body>
     </html>

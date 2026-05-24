@@ -7,9 +7,11 @@ export interface FuelPrice {
   name: string;
   name_ms: string;
   price: number;
+  market_price: number | null; // estimated unsubsidised price, null if already market
   unit: string;
   is_subsidised: boolean;
   note: string;
+  note_ms: string;
 }
 
 export interface PetrolData {
@@ -55,36 +57,44 @@ const FALLBACK_FUELS: FuelPrice[] = [
     name: "RON 95",
     name_ms: "Petrol RON95",
     price: 2.05,
+    market_price: 3.11, // estimated ~RON97 × 0.92
     unit: "litre",
     is_subsidised: true,
     note: "Subsidised ceiling price",
+    note_ms: "Harga siling bersubsidi",
   },
   {
     code: "RON97",
     name: "RON 97",
     name_ms: "Petrol RON97",
     price: 3.38,
+    market_price: null,
     unit: "litre",
     is_subsidised: false,
     note: "Market price · Weekly update",
+    note_ms: "Harga pasaran · Kemaskini mingguan",
   },
   {
     code: "DIESEL",
     name: "Euro 5 Diesel",
     name_ms: "Diesel Euro 5",
     price: 3.35,
+    market_price: null,
     unit: "litre",
     is_subsidised: false,
     note: "Market price · Weekly update",
+    note_ms: "Harga pasaran · Kemaskini mingguan",
   },
   {
     code: "DIESEL_B10",
     name: "Diesel B10",
     name_ms: "Diesel B10",
     price: 2.15,
+    market_price: 3.35, // same as Euro 5 diesel without subsidy
     unit: "litre",
     is_subsidised: true,
     note: "Subsidised ceiling price",
+    note_ms: "Harga siling bersubsidi",
   },
 ];
 
@@ -167,8 +177,20 @@ export async function getPetrolData(): Promise<PetrolData> {
   const scraped = await scrapeKPDNHEP();
 
   const fuels = scraped ?? FALLBACK_FUELS;
-  // Ensure all 4 fuel types are present
-  const fullFuels = FALLBACK_FUELS.map((fb) => fuels.find((f) => f.code === fb.code) ?? fb);
+  const fullFuels = FALLBACK_FUELS.map((fb) => {
+    const found = fuels.find((f) => f.code === fb.code) ?? fb;
+    // Recompute market price estimates from live scraped data
+    if (found.code === "RON95") {
+      const ron97 = fuels.find((f) => f.code === "RON97");
+      const marketEst = ron97 ? parseFloat((ron97.price * 0.92).toFixed(2)) : fb.market_price;
+      return { ...found, market_price: marketEst };
+    }
+    if (found.code === "DIESEL_B10") {
+      const diesel = fuels.find((f) => f.code === "DIESEL");
+      return { ...found, market_price: diesel ? diesel.price : fb.market_price };
+    }
+    return found;
+  });
   const isFallback = !scraped;
 
   const data: PetrolData = {
