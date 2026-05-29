@@ -1,13 +1,9 @@
-import axios from "axios";
-import * as cheerio from "cheerio";
-import https from "https";
-
 export interface FuelPrice {
   code: string;
   name: string;
   name_ms: string;
   price: number;
-  market_price: number | null; // estimated unsubsidised price, null if already market
+  market_price: number | null;
   unit: string;
   is_subsidised: boolean;
   note: string;
@@ -23,26 +19,15 @@ export interface PetrolData {
   fetched_at: string;
 }
 
+const DATA_GOV_URL =
+  "https://api.data.gov.my/data-catalogue?id=fuelprice&limit=1&sort=-date";
+
 // Next Thursday from a given date (petrol prices update every Thursday)
 function nextThursday(from: Date = new Date()): string {
   const d = new Date(from);
-  const day = d.getDay(); // 0=Sun, 4=Thu
+  const day = d.getDay();
   const daysUntil = day <= 4 ? 4 - day : 7 - day + 4;
   d.setDate(d.getDate() + daysUntil);
-  return d.toLocaleDateString("en-MY", {
-    timeZone: "Asia/Kuala_Lumpur",
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-  });
-}
-
-// Last Thursday (current effective date)
-function lastThursday(from: Date = new Date()): string {
-  const d = new Date(from);
-  const day = d.getDay();
-  const daysSince = day >= 4 ? day - 4 : day + 3;
-  d.setDate(d.getDate() - daysSince);
   return d.toLocaleDateString("en-MY", {
     timeZone: "Asia/Kuala_Lumpur",
     day: "numeric",
@@ -56,18 +41,18 @@ const FALLBACK_FUELS: FuelPrice[] = [
     code: "RON95",
     name: "RON 95",
     name_ms: "Petrol RON95",
-    price: 2.05,
-    market_price: 3.11, // estimated ~RON97 × 0.92
+    price: 1.99,
+    market_price: 3.92,
     unit: "litre",
     is_subsidised: true,
-    note: "Subsidised ceiling price",
-    note_ms: "Harga siling bersubsidi",
+    note: "BUDI95 subsidised price",
+    note_ms: "Harga bersubsidi BUDI95",
   },
   {
     code: "RON97",
     name: "RON 97",
     name_ms: "Petrol RON97",
-    price: 3.38,
+    price: 4.65,
     market_price: null,
     unit: "litre",
     is_subsidised: false,
@@ -78,7 +63,7 @@ const FALLBACK_FUELS: FuelPrice[] = [
     code: "DIESEL",
     name: "Euro 5 Diesel",
     name_ms: "Diesel Euro 5",
-    price: 3.35,
+    price: 4.87,
     market_price: null,
     unit: "litre",
     is_subsidised: false,
@@ -87,85 +72,86 @@ const FALLBACK_FUELS: FuelPrice[] = [
   },
   {
     code: "DIESEL_B10",
-    name: "Diesel B10",
-    name_ms: "Diesel B10",
+    name: "Diesel (East M'sia)",
+    name_ms: "Diesel (Malaysia Timur)",
     price: 2.15,
-    market_price: 3.35, // same as Euro 5 diesel without subsidy
+    market_price: 4.87,
     unit: "litre",
     is_subsidised: true,
-    note: "Subsidised ceiling price",
-    note_ms: "Harga siling bersubsidi",
+    note: "East Malaysia subsidised",
+    note_ms: "Harga bersubsidi Malaysia Timur",
   },
 ];
 
 let cache: { data: PetrolData; ts: number } | null = null;
-const CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
+const CACHE_TTL_MS = 24 * 60 * 60 * 1000;
 
-async function scrapeKPDNHEP(): Promise<FuelPrice[] | null> {
+async function fetchFromDataGov(): Promise<{ fuels: FuelPrice[]; date: string } | null> {
   try {
-    const agent = new https.Agent({ rejectUnauthorized: false });
-    const res = await axios.get(
-      "https://harga.kpdnhep.gov.my/",
+    const res = await fetch(DATA_GOV_URL, { cache: "no-store" });
+    if (!res.ok) return null;
+
+    const raw: {
+      date: string;
+      ron95_budi95: number;
+      ron95_skps: number;
+      ron95: number;
+      ron97: number;
+      diesel: number;
+      diesel_eastmsia: number;
+    }[] = await res.json();
+
+    const latest = raw[0];
+    if (!latest) return null;
+
+    const fuels: FuelPrice[] = [
       {
-        httpsAgent: agent,
-        timeout: 8000,
-        headers: {
-          "User-Agent":
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120 Safari/537.36",
-          "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-        },
-      }
-    );
+        code: "RON95",
+        name: "RON 95",
+        name_ms: "Petrol RON95",
+        price: latest.ron95_budi95,
+        market_price: latest.ron95,
+        unit: "litre",
+        is_subsidised: true,
+        note: "BUDI95 subsidised price",
+        note_ms: "Harga bersubsidi BUDI95",
+      },
+      {
+        code: "RON97",
+        name: "RON 97",
+        name_ms: "Petrol RON97",
+        price: latest.ron97,
+        market_price: null,
+        unit: "litre",
+        is_subsidised: false,
+        note: "Market price · Weekly update",
+        note_ms: "Harga pasaran · Kemaskini mingguan",
+      },
+      {
+        code: "DIESEL",
+        name: "Euro 5 Diesel",
+        name_ms: "Diesel Euro 5",
+        price: latest.diesel,
+        market_price: null,
+        unit: "litre",
+        is_subsidised: false,
+        note: "Market price · Weekly update",
+        note_ms: "Harga pasaran · Kemaskini mingguan",
+      },
+      {
+        code: "DIESEL_B10",
+        name: "Diesel (East M'sia)",
+        name_ms: "Diesel (Malaysia Timur)",
+        price: latest.diesel_eastmsia,
+        market_price: latest.diesel,
+        unit: "litre",
+        is_subsidised: true,
+        note: "East Malaysia subsidised",
+        note_ms: "Harga bersubsidi Malaysia Timur",
+      },
+    ];
 
-    const $ = cheerio.load(res.data as string);
-    const fuels: FuelPrice[] = [];
-
-    // Try to find price table rows
-    $("table tr, .price-item, .harga-item").each((_, el) => {
-      const text = $(el).text();
-
-      const ron95Match = text.match(/RON\s*95[^0-9]*([0-9]+\.[0-9]{2})/i);
-      const ron97Match = text.match(/RON\s*97[^0-9]*([0-9]+\.[0-9]{2})/i);
-      const dieselMatch = text.match(/[Dd]iesel[^0-9]*([0-9]+\.[0-9]{2})/i);
-
-      if (ron95Match && !fuels.find((f) => f.code === "RON95")) {
-        const price = parseFloat(ron95Match[1]);
-        if (price > 1 && price < 5) {
-          fuels.push({ ...FALLBACK_FUELS[0], price });
-        }
-      }
-      if (ron97Match && !fuels.find((f) => f.code === "RON97")) {
-        const price = parseFloat(ron97Match[1]);
-        if (price > 1 && price < 6) {
-          fuels.push({ ...FALLBACK_FUELS[1], price });
-        }
-      }
-      if (dieselMatch && !fuels.find((f) => f.code === "DIESEL")) {
-        const price = parseFloat(dieselMatch[1]);
-        if (price > 1 && price < 6) {
-          fuels.push({ ...FALLBACK_FUELS[2], price });
-        }
-      }
-    });
-
-    // Also try body text regex as backup
-    const bodyText = $("body").text();
-    if (!fuels.find((f) => f.code === "RON95")) {
-      const m = bodyText.match(/RON\s*95[^0-9]{0,20}(RM\s*)?([0-9]+\.[0-9]{2})/i);
-      if (m) {
-        const price = parseFloat(m[2]);
-        if (price > 1 && price < 5) fuels.push({ ...FALLBACK_FUELS[0], price });
-      }
-    }
-    if (!fuels.find((f) => f.code === "RON97")) {
-      const m = bodyText.match(/RON\s*97[^0-9]{0,20}(RM\s*)?([0-9]+\.[0-9]{2})/i);
-      if (m) {
-        const price = parseFloat(m[2]);
-        if (price > 1 && price < 6) fuels.push({ ...FALLBACK_FUELS[1], price });
-      }
-    }
-
-    return fuels.length >= 2 ? fuels : null;
+    return { fuels, date: latest.date };
   } catch {
     return null;
   }
@@ -174,33 +160,28 @@ async function scrapeKPDNHEP(): Promise<FuelPrice[] | null> {
 export async function getPetrolData(): Promise<PetrolData> {
   if (cache && Date.now() - cache.ts < CACHE_TTL_MS) return cache.data;
 
-  const scraped = await scrapeKPDNHEP();
+  const result = await fetchFromDataGov();
 
-  const fuels = scraped ?? FALLBACK_FUELS;
-  const fullFuels = FALLBACK_FUELS.map((fb) => {
-    const found = fuels.find((f) => f.code === fb.code) ?? fb;
-    // Recompute market price estimates from live scraped data
-    if (found.code === "RON95") {
-      const ron97 = fuels.find((f) => f.code === "RON97");
-      const marketEst = ron97 ? parseFloat((ron97.price * 0.92).toFixed(2)) : fb.market_price;
-      return { ...found, market_price: marketEst };
-    }
-    if (found.code === "DIESEL_B10") {
-      const diesel = fuels.find((f) => f.code === "DIESEL");
-      return { ...found, market_price: diesel ? diesel.price : fb.market_price };
-    }
-    return found;
-  });
-  const isFallback = !scraped;
+  const effectiveDate = result
+    ? new Date(result.date).toLocaleDateString("en-MY", {
+        timeZone: "Asia/Kuala_Lumpur",
+        day: "numeric",
+        month: "long",
+        year: "numeric",
+      })
+    : new Date().toLocaleDateString("en-MY", {
+        timeZone: "Asia/Kuala_Lumpur",
+        day: "numeric",
+        month: "long",
+        year: "numeric",
+      });
 
   const data: PetrolData = {
-    fuels: fullFuels,
-    effective_date: lastThursday(),
+    fuels: result?.fuels ?? FALLBACK_FUELS,
+    effective_date: effectiveDate,
     next_update: nextThursday(),
-    source: isFallback
-      ? "Reference prices (KPDNHEP)"
-      : "KPDNHEP harga.kpdnhep.gov.my",
-    is_fallback: isFallback,
+    source: result ? "data.gov.my" : "Reference prices (data.gov.my)",
+    is_fallback: !result,
     fetched_at: new Date().toISOString(),
   };
 
